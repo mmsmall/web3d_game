@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html>
+
+<head>
+    <title>Actor</title>
+    <script type="text/javascript" src="lib/three.js"></script>
+    <script type="text/javascript" src="lib/stats.js"></script>
+    <script type="text/javascript" src="lib/tween.min.js"></script>
+    <style>
+        body {
+            /* set margin to 0 and overflow to hidden, to go fullscreen */
+            margin: 0;
+            overflow: hidden;
+        }
+        #mask{
+            background-color:#ccc;
+            opacity:0.5;
+            filter: alpha(opacity=50);
+            position:absolute;
+            left:0;
+            top:0;
+            z-index:1000;
+        }
+        /*内容层*************/
+        #popup{
+            /*width:500px;*/
+            /*height:200px;*/
+            position:fixed;
+            /*设置层级为最大*/
+            z-index:1001;
+            background-color: #fff;
+
+            /*设置内容层宽高*/
+        }
+
+        h1{
+            padding:10px 20px;
+        }
+
+        li{
+            width: 350px;
+            list-style: none;
+            display: inline-block;
+            text-align: center;
+            padding: 10px;
+        }
+        .descript{
+            width: 350px;
+            text-align: center;
+        }
+        #blank{
+            margin-bottom: 10px;
+            width: 350px;
+            height: 110px;
+        }
+
+    </style>
+</head>
+<body>
+<div id="Stats-output">
+</div>
+<audio id="hit">
+    <source src="sources/hit.mp3"/>
+</audio>
+<audio id="back" loop="loop">
+    <source src="sources/bgm.mp3"/>
+</audio>
+<!-- Div which will hold the Output -->
+<div id="WebGL-output">
+</div>
+
+<!-- Javascript code that runs our Three.js examples -->
+<script type="text/javascript">
+
+    // once everything is loaded, we run our Three.js stuff.
+    function init() {
+
+        var stats = initStats();
+        // create a scene, that will hold all our elements such as objects, cameras and lights.
+        var scene = new THREE.Scene();
+
+        // create a camera, which defines where we're looking at.
+        var camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // position and point the camera to the center of the scene
+        camera.position.x = 350;
+        camera.position.y = 70;
+        camera.position.z = 0;
+        camera.lookAt(new THREE.Vector3(300, 20, 0));
+
+        var light = new THREE.PointLight(0xffffff);
+        light.position.set(300, 100, 0);
+        light.intensity = 1;
+        scene.add(light);
+        // *************************************************************************************************
+        //添加墙壁和地面
+        var floorTex = THREE.ImageUtils.loadTexture("model/floor-wood.jpg");
+        var plane = new THREE.Mesh(new THREE.BoxGeometry(800, 600, 0.1), new THREE.MeshPhongMaterial({
+            color: 0xffffff,
+            map: floorTex
+        }));
+        plane.rotation.x = -0.5 * Math.PI;
+        scene.add(plane);
+
+        var wall1 = createMesh(new THREE.BoxGeometry(800, 300, 10), "stone.jpg","stone-bump.jpg");
+        wall1.position.z = -300;
+        wall1.position.y = 150;
+        scene.add(wall1);
+
+
+        var wall2 = createMesh(new THREE.BoxGeometry(800, 300, 10), "stone.jpg","stone-bump.jpg");
+        wall2.position.z = 300;
+        wall2.position.y = 150;
+        scene.add(wall2);
+
+        var clock = new THREE.Clock();
+        var loader = new THREE.JSONLoader();
+        var objects = [];
+
+        // ****************************************************************************************************
+        //添加障碍物
+        //X,Y,Z决定障碍物的形状，pisX,Y/2,pisZ决定障碍物的空间位置。
+        function creatObstace(X,Y,Z,pisX,pisZ) {
+            var cube = createMesh(new THREE.BoxGeometry(X, Y, Z), "stone.jpg", "stone-bump.jpg");
+            cube.position.x = pisX;
+            cube.position.y = Y/2;
+            cube.position.z = pisZ;
+            scene.add(cube);
+            objects.push(cube);
+        }
+        creatObstace(30,60,130,100,100);
+        creatObstace(30,60,250,-100,-50);
+
+        creatObstace(20,90,200,-300,-300);
+        creatObstace(30,80,250,-400,150);
+
+        //creatObstace(10,80,50,-500,0);
+        creatObstace(10,80,100,-500,-200);
+        creatObstace(10,80,100,-500,200);
+
+        creatObstace(30,80,250,-600,300);
+        creatObstace(30,90,250,-700,-200);
+
+        creatObstace(30,80,250,-800,200);
+        creatObstace(30,90,250,-900,0);
+        creatObstace(30,100,250,-1000,100);
+        creatObstace(30,100,200,-1100,-200);
+
+        creatObstace(30,60,130,-1200,100);
+
+        creatObstace(20,90,200,-1300,-300);
+        creatObstace(30,80,250,-1400,150);
+
+        //creatObstace(10,80,50,-1500,0);
+        creatObstace(10,80,100,-1500,-200);
+        creatObstace(10,80,100,-1500,200);
+
+        creatObstace(30,80,250,-1600,300);
+        creatObstace(30,90,250,-1700,-200);
+
+        creatObstace(30,80,250,-1800,200);
+        creatObstace(30,90,250,-1900,0);
+        creatObstace(30,100,250,-2000,100);
+        creatObstace(30,100,200,-2100,-200);
+
+//        var cube1 = createMesh(new THREE.BoxGeometry(30, 60, 130), "stone.jpg", "stone-bump.jpg");
+//        cube1.position.x = 100;
+//        cube1.position.y = 30;
+//        cube1.position.z = 100;
+//        scene.add(cube1);
+//        objects.push(cube1);
+
+//        var cube2 = createMesh(new THREE.BoxGeometry(30, 60, 250), "stone.jpg", "stone-bump.jpg");
+//        cube2.position.x = -100;
+//        cube2.position.y = 30;
+//        cube2.position.z = -50;
+//        scene.add(cube2);
+//        objects.push(cube2);
+
+        // ****************************************************************************************************
+        //加载Actor
+        var actor;
+        loader.load('model/actor.js', function (geometry, mat) {
+
+            geometry.computeMorphNormals();
+
+            var mat = new THREE.MeshLambertMaterial(
+                {
+                    map: THREE.ImageUtils.loadTexture("model/blue128.png"),
+                    morphTargets: true, morphNormals: true
+                });
+
+            actor = new THREE.MorphAnimMesh(geometry, mat);
+            actor.position.x = 300;
+            actor.position.y = 20;
+            // parse the animations and add them to the control
+            actor.parseAnimations();
+            //设置模型动画
+            //actor.playAnimation('walk', 5);
+            //动画暂停
+            bool = false;
+            scene.add(actor);
+            //step = 3;
+        });
+
+
+        var webGLRenderer = new THREE.WebGLRenderer();
+        webGLRenderer.setClearColor(new THREE.Color(0xEEEEEE, 1.0));
+        webGLRenderer.setSize(window.innerWidth, window.innerHeight);
+        webGLRenderer.shadowMapEnabled = true;
+        // add the output of the renderer to the html element
+        document.getElementById("WebGL-output").appendChild(webGLRenderer.domElement);
+
+
+        step = null;
+        var ooo = camera.position.x;
+        var bool = true;
+        openNew();
+        start = true;
+        render();
+        function render() {
+            stats.update();
+
+            var delta = clock.getDelta();
+            webGLRenderer.clear();
+            //暂停/开始动画
+
+            TWEEN.update();
+
+            if (actor) {
+                if (objects.length != 0) {
+                    checkCollision(actor, objects);
+                }
+                //动画播放开关
+                if (bool) {
+                    actor.updateAnimation(delta * 1000);
+                }
+
+                if (step) {
+                    actor.position.x -= step;
+                    ooo -= step;
+                    camera.position.x = ooo;
+                    camera.lookAt(actor.position);
+                    light.position.x = actor.position.x + 50;
+                    wall1.position.x -= step;
+                    wall2.position.x -= step;
+                    plane.position.x -= step;
+                }
+
+                if(actor.position.x<=-2200){
+                    openNew2("YOU WIN!!!");
+                    step = null;
+                    //动画暂停
+                    bool = false;
+                    start = true;
+                }
+            }
+            // render using requestAnimationFrame
+            requestAnimationFrame(render);
+            webGLRenderer.render(scene, camera);
+        }
+
+
+//**************************************************************************************************
+        function move() {
+
+            var z0 = actor.position.z;
+
+            var y0 = actor.position.y;
+            var tween = new TWEEN.Tween({y:y0,z: z0, rot: 0});
+            tween.to({y: y0, z: z0+20, rot: 0}, 100);
+            tween.easing(TWEEN.Easing.Elastic.InOut);
+            tween.onUpdate(function () {
+                actor.position.set(actor.position.x, this.y, this.z);
+            });
+            tween.start();
+        }
+
+        function createMesh(geom, imageFile, bump) {
+            var texture = THREE.ImageUtils.loadTexture("model/" + imageFile);
+            geom.computeVertexNormals();
+            var mat = new THREE.MeshPhongMaterial();
+            mat.map = texture;
+            if (bump) {
+                var bump = THREE.ImageUtils.loadTexture("model/" + bump);
+                mat.bumpMap = bump;
+                mat.bumpScale = 0.2;
+            }
+            // create a multimaterial
+            var mesh = new THREE.Mesh(geom, mat);
+
+            return mesh;
+        }
+
+        function checkCollision(actor) {
+
+            var originPoint = actor.position.clone();
+
+            for (var vertexIndex = 0; vertexIndex < actor.geometry.vertices.length; vertexIndex++) {
+                var localVertex = actor.geometry.vertices[vertexIndex].clone();
+                var globalVertex = localVertex.applyMatrix4(actor.matrix);
+                var directionVector = globalVertex.sub(actor.position);
+
+                var ray = new THREE.Raycaster(originPoint, directionVector.clone().normalize());
+                var collisionResults = ray.intersectObjects(objects);
+                if (collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()) {
+                    //console.log(collisionResults[0].object.name);
+
+                    document.getElementById("back").pause();
+                    actor.material.map = THREE.ImageUtils.loadTexture("model/red128.png");
+                    actor.playAnimation('death', 4);
+                    document.getElementById("hit").play();
+                    setTimeout(function () {
+                        bool = false;
+                        setTimeout(function () {
+                            openNew2("Game Over");
+                        },400);
+                    }, 400);
+
+                    actor.position.x += 0.3;
+                    step = null;
+
+
+                }
+            }
+        }
+
+        //键盘事件
+        //***************************************
+        document.addEventListener('keydown', onKeyDown, false);
+        document.addEventListener('keyup', onKeyUp, false);
+
+        function onKeyDown(event) {
+            if (bool) {
+                if ( (event.keyCode == 37 ||event.keyCode == 65) && actor.position.z <= 270) {
+                    //move();
+                    actor.position.z += 20;
+                    camera.position.z += 20;
+                    light.position.z += 20;
+                }
+
+                if ((event.keyCode == 39 ||event.keyCode == 68) && actor.position.z >= -270) {
+                    actor.position.z -= 20;
+                    camera.position.z -= 20;
+                    light.position.z -= 20;
+                }
+            }
+
+
+
+        }
+
+        function onKeyUp(event) {
+            //暂停与开始
+            if(start){
+                if(event.keyCode == 32){
+                    bool = true;
+                    actor.playAnimation('run', 10);
+                    document.body.removeChild(oPopup);
+                    document.body.removeChild(oMask);
+                    step = 3;
+                    //空格键切换
+                    start = false;
+                    document.getElementById("back").play();
+                }
+            }else{
+                if(event.keyCode == 32){
+                    //暂停界面
+                    openNew();
+                    //游戏暂停
+                    step = null;
+                    //动画暂停
+                    bool = false;
+                    start = true;
+                    document.getElementById("back").pause();
+                }
+            }
+
+        }
+
+        function initStats() {
+
+            var stats = new Stats();
+
+            stats.setMode(0); // 0: fps, 1: ms
+
+
+            // Align top-left
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.left = '0px';
+            stats.domElement.style.top = '0px';
+
+            document.getElementById("Stats-output").appendChild(stats.domElement);
+
+            return stats;
+        }
+
+        //弹出层********************************************************************************
+        function openNew(){
+            //获取页面的高度和宽度
+            var sWidth=document.body.scrollWidth;
+            var sHeight=document.documentElement.clientHeight;
+            // 有时为document.body.scrollHeight;
+
+            //获取页面的可视区域高度和宽度
+            var wHeight=document.documentElement.clientHeight;
+
+            //创建一个遮罩层
+            oMask=document.createElement("div");
+            oMask.id="mask";
+            oMask.style.height=sHeight+"px";
+            oMask.style.width=sWidth+"px";
+            document.body.appendChild(oMask);
+
+            //创建内容层
+            oPopup=document.createElement("div");
+            oPopup.id="popup";
+
+
+            oPopup.innerHTML =
+                '<ul>'
+                + '<li><img src="sources/left.png"><img src="sources/a.png"><h2 class="descrition">角色左移</h2></li>'
+                + '<li><img id="blank" src="sources/blank.png"><h2 class="descrition">开始与暂停</h2></li>'
+                + '<li><img src="sources/d.png"><img src="sources/right.png"><h2 class="descrition">角色右移</h2></li>'
+                + '</ul>';
+
+
+            document.body.appendChild(oPopup);
+
+            //获取登陆框的宽和高
+            var dHeight=oPopup.offsetHeight;
+            var dWidth=oPopup.offsetWidth;
+            //设置登陆框的left和top
+            oPopup.style.left=sWidth/2-dWidth/2+"px";
+            oPopup.style.top=wHeight/2-dHeight/2+"px";
+
+
+        }
+
+        //弹出层********************************************************************************
+        function openNew2(str){
+
+
+            //获取页面的高度和宽度
+            var sWidth=document.body.scrollWidth;
+            var sHeight=document.documentElement.clientHeight;
+            // 有时为document.body.scrollHeight;
+
+            //获取页面的可视区域高度和宽度
+            var wHeight=document.documentElement.clientHeight;
+
+            //创建一个遮罩层
+            oMask=document.createElement("div");
+            oMask.id="mask";
+            oMask.style.height=sHeight+"px";
+            oMask.style.width=sWidth+"px";
+            document.body.appendChild(oMask);
+
+            document.removeEventListener('keydown', onKeyDown, false);
+            document.removeEventListener('keyup', onKeyUp, false);
+
+            //创建内容层
+            oPopup=document.createElement("div");
+            oPopup.id="popup";
+
+
+            oPopup.innerHTML ='<h1>'+str+'</h1>';
+
+
+            document.body.appendChild(oPopup);
+
+            //获取登陆框的宽和高
+            var dHeight=oPopup.offsetHeight;
+            var dWidth=oPopup.offsetWidth;
+            //设置登陆框的left和top
+            oPopup.style.left=sWidth/2-dWidth/2+"px";
+            oPopup.style.top=wHeight/2-dHeight/2+"px";
+
+            document.getElementById("back").pause();
+            $("#WebGL-output").remove();
+            alert("1");
+
+        }
+
+    }
+    window.onload = init;
+
+
+</script>
+</body>
+</html>
